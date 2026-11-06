@@ -1,0 +1,29 @@
+cflags = -Wall -Wextra -Iinclude -Ilibs/viking/include -Ilibs/viking/libs -Ilibs/viking/libs/winx/include -ggdb
+ldflags = -lX11 -lXext -lXrandr -lXfixes -lGLX -lvulkan
+build_dir = build
+
+[vui]
+type = static_lib
+src = src/lib/**.c
+deps = viking winx
+cflags = $cflags
+incpath = $build_dir
+
+[vui-example]
+src = examples/basic.c src/backends/winx-viking.c
+deps = vui viking winx
+cflags = $cflags
+ldflags = $ldflags
+incpath = $build_dir
+
+[viking]
+type = custom
+name_type = static_lib
+cmd = make -C libs/viking -B && cp libs/viking/libviking.* .
+src = libs/viking/src/**.c
+
+[winx]
+type = custom
+name_type = static_lib
+cmd = make CFLAGS=-DWINX_VULKAN -C libs/viking/libs/winx -B && cp libs/viking/libs/winx/libwinx.* .
+src = libs/viking/libs/winx/src/**.c
