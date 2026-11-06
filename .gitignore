@@ -1,4 +1,4 @@
 /nsb
 /lib*
 !/libs/
-vui-example
+/vui-example
