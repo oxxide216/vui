@@ -512,6 +512,7 @@ static void destroy(VuiBackendData *data) {
     free(data->circle_indices.items);
   if (data->text_ssbo_data.items)
     free(data->text_ssbo_data.items);
+  free(data->text_data);
   free(data);
 }
 
