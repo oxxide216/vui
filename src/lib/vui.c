@@ -148,11 +148,14 @@ static VuiWidgetState *push_widget(Vui *vui) {
 bool vui_button(Vui *vui, const char *text) {
   VuiWidgetState *state = push_widget(vui);
 
-  if (state->is_hovered && vui->mouse_down_this_frame)
-    state->is_pressed = true;
-
-  if (state->is_hovered && state->is_pressed && vui->mouse_up_this_frame)
-    state->is_released = true;
+  if (state->is_hovered) {
+    if (vui->mouse_down_this_frame)
+      state->is_pressed = true;
+    if (state->is_pressed && vui->mouse_up_this_frame)
+      state->is_released = true;
+  } else {
+    state->is_pressed = false;
+  }
 
   if (state->is_pressed)
     vui->backend->draw_rounded_rect(vui->backend->data,
