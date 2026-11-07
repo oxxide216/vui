@@ -31,10 +31,13 @@ void vui_begin_frame(Vui *vui) {
     DEFAULT_OUTER_PADDING,
     DEFAULT_INNER_PADDING,
     0.0, 0.0, 0.0, 0.0,
+    vui->children_constraint,
   };
   vui->backend->get_window_size(vui->backend->data, &layout.w, &layout.h);
   DA_APPEND(vui->layouts, layout);
   vui->current_layout = 0;
+
+  vui_ccons_fill(vui);
 
   vui->backend->begin_frame(vui->backend->data);
 }
@@ -48,48 +51,86 @@ void vui_end_frame(Vui *vui) {
     if (layout->len == 0)
       continue;
 
+    VuiWidgetStackItem *item = vui->stack.items + layout->depth;
+
+    u32 fills_count = 0;
+    f32 fixed_space = 0.0;
+
+    for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
+      switch (item->states.items[j].constraint.kind) {
+      case VuiConstraintKindFill: {
+        ++fills_count;
+      } break;
+
+      case VuiConstraintKindFixed: {
+        fixed_space += item->states.items[j].constraint.value;
+      } break;
+      }
+    }
+
     f32 w, h;
     switch (layout->kind) {
     case VuiLayoutKindVertical: {
       w = layout->w - layout->outer_padding * 2.0;
       h = (layout->h -
            layout->outer_padding * 2.0 -
-           layout->inner_padding * (layout->len - 1)) / layout->len;
+           layout->inner_padding * (layout->len - 1) -
+           fixed_space) / fills_count;
     } break;
 
     case VuiLayoutKindHorizontal: {
       w = (layout->w -
            layout->outer_padding * 2.0 -
-           layout->inner_padding * (layout->len - 1)) / layout->len;
+           layout->inner_padding * (layout->len - 1) -
+           fixed_space) / fills_count;
       h = layout->h - layout->outer_padding * 2.0;
     } break;
     }
 
-    VuiWidgetStackItem *item = vui->stack.items + layout->depth;
     f32 x = layout->x + layout->outer_padding;
     f32 y = layout->y + layout->outer_padding;
 
     for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
       item->states.items[j].x = x;
       item->states.items[j].y = y;
-      item->states.items[j].w = w;
-      item->states.items[j].h = h;
+
+      switch (item->states.items[j].constraint.kind) {
+      case VuiConstraintKindFill: {
+        item->states.items[j].w = w;
+        item->states.items[j].h = h;
+      } break;
+
+      case VuiConstraintKindFixed: {
+        switch (layout->kind) {
+        case VuiLayoutKindVertical: {
+          item->states.items[j].w = w;
+          item->states.items[j].h = item->states.items[j].constraint.value;
+        } break;
+
+        case VuiLayoutKindHorizontal: {
+          item->states.items[j].w = item->states.items[j].constraint.value;
+          item->states.items[j].h = h;
+        } break;
+        }
+      } break;
+      }
+
       if (item->states.items[j].layout_index != (u32) -1) {
         VuiLayout *other_layout =
           vui->layouts.items + item->states.items[j].layout_index;
-        other_layout->x = x;
-        other_layout->y = y;
-        other_layout->w = w;
-        other_layout->h = h;
+        other_layout->x = item->states.items[j].x;
+        other_layout->y = item->states.items[j].y;
+        other_layout->w = item->states.items[j].w;
+        other_layout->h = item->states.items[j].h;
       }
 
       switch (layout->kind) {
       case VuiLayoutKindVertical: {
-        y += h + layout->inner_padding;
+        y += item->states.items[j].h + layout->inner_padding;
       } break;
 
       case VuiLayoutKindHorizontal: {
-        x += w + layout->inner_padding;
+        x += item->states.items[j].w + layout->inner_padding;
       } break;
       }
     }
@@ -112,28 +153,12 @@ void vui_destroy(Vui *vui) {
     free(vui->layouts.items);
 }
 
-void vui_on_mouse_move(Vui *vui, f32 x, f32 y) {
-  vui->mouse_x = x;
-  vui->mouse_y = y;
-}
-
-void vui_on_mouse_down(Vui *vui) {
-  vui->mouse_down_this_frame = true;
-}
-
-void vui_on_mouse_up(Vui *vui) {
-  vui->mouse_up_this_frame = true;
-}
-
 static VuiWidgetState *push_widget(Vui *vui) {
   VuiLayout *current = vui->layouts.items + vui->current_layout;
   VuiWidgetStackItem *item = vui->stack.items + current->depth;
 
-  if (item->pos++ >= item->states.len) {
-    VuiWidgetState new = {0};
-    new.layout_index = (u32) -1;
-    DA_APPEND(item->states, new);
-  }
+  if (item->pos++ >= item->states.len)
+    DA_APPEND(item->states, (VuiWidgetState) {0});
 
   VuiWidgetState *result = item->states.items + current->pos + current->len++;
 
@@ -141,6 +166,10 @@ static VuiWidgetState *push_widget(Vui *vui) {
     vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
     vui->mouse_y >= result->y && vui->mouse_y <= result->y + result->h;
   result->is_released = false;
+  result->layout_index = (u32) -1;
+  result->constraint = vui->constraint;
+
+  vui->constraint = vui->children_constraint;
 
   return result;
 }
@@ -200,7 +229,10 @@ static void vui_layout_begin(Vui *vui,
     current->depth + 1, 0, 0,
     outer_padding, inner_padding,
     state->x, state->y, state->w, state->h,
+    vui->children_constraint,
   };
+
+  vui_ccons_fill(vui);
 
   if (new.depth >= vui->stack.len)
     DA_APPEND(vui->stack, (VuiWidgetStackItem) {0});
@@ -225,4 +257,33 @@ void vui_layout_end(Vui *vui) {
   while (vui->current_layout > 0 &&
          vui->layouts.items[vui->current_layout].depth >= depth)
     --vui->current_layout;
+}
+
+void vui_cons_fill(Vui *vui) {
+  vui->constraint = (VuiConstraint) { VuiConstraintKindFill, 0.0 };
+}
+
+void vui_cons_fixed(Vui *vui, f32 value) {
+  vui->constraint = (VuiConstraint) { VuiConstraintKindFixed, value };
+}
+
+void vui_ccons_fill(Vui *vui) {
+  vui->children_constraint = (VuiConstraint) { VuiConstraintKindFill, 0.0 };
+}
+
+void vui_ccons_fixed(Vui *vui, f32 value) {
+  vui->children_constraint = (VuiConstraint) { VuiConstraintKindFixed, value };
+}
+
+void vui_on_mouse_move(Vui *vui, f32 x, f32 y) {
+  vui->mouse_x = x;
+  vui->mouse_y = y;
+}
+
+void vui_on_mouse_down(Vui *vui) {
+  vui->mouse_down_this_frame = true;
+}
+
+void vui_on_mouse_up(Vui *vui) {
+  vui->mouse_up_this_frame = true;
 }

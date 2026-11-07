@@ -55,6 +55,7 @@ i32 main(void) {
         if (vui_button(&vui, "1"))
           puts("1");
       vui_layout_end(&vui);
+      vui_cons_fixed(&vui, 50.0);
       vui_layout_begin_horz(&vui, 0.0, 5.0);
         if (vui_button(&vui, "2"))
           puts("2");
