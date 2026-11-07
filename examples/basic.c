@@ -7,23 +7,6 @@
 #include "vui/vui.h"
 #include "vui/vui-winx-vulkan.h"
 
-static Str read_file(char *path) {
-  Str content;
-
-  FILE *file = fopen(path, "rb");
-  if (!file)
-    return (Str) { NULL, (u32) -1 };
-
-  fseek(file, 0, SEEK_END);
-  content.len = ftell(file);
-  content.ptr = malloc(content.len);
-  fseek(file, 0, SEEK_SET);
-  fread(content.ptr, 1, content.len, file);
-  fclose(file);
-
-  return content;
-}
-
 i32 main(void) {
   Winx *winx = winx_init();
   WinxWindow *window = winx_init_window(winx, STR_LIT("VUI Example"),
@@ -63,6 +46,14 @@ i32 main(void) {
       winx_draw(window);
       continue;
     }
+
+    vui_begin_frame(&vui);
+    if (vui_button(&vui, "0"))
+      puts("0");
+    if (vui_button(&vui, "1"))
+      puts("1");
+    vui_end_frame(&vui);
+
     vik_end_frame(executor);
 
     winx_draw(window);

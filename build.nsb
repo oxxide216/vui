@@ -1,6 +1,8 @@
 cflags = -Wall -Wextra -Iinclude -Ilibs/viking/include -Ilibs/viking/libs -Ilibs/viking/libs/winx/include -ggdb
-ldflags = -lX11 -lXext -lXrandr -lXfixes -lGLX -lvulkan
+ldflags = -lX11 -lXext -lXrandr -lXfixes -lGLX -lvulkan -lm
 build_dir = build
+shader_spvs = $build_dir/shaders/winx-viking/shape.vert.spv $build_dir/shaders/winx-viking/shape.frag.spv $build_dir/shaders/winx-viking/circle.vert.spv $build_dir/shaders/winx-viking/circle.frag.spv $build_dir/shaders/winx-viking/text.vert.spv $build_dir/shaders/winx-viking/text.frag.spv
+fonts = fonts/OpenSans-Regular.ttf
 
 [vui]
 type = static_lib
@@ -12,9 +14,45 @@ incpath = $build_dir
 [vui-example]
 src = examples/basic.c src/backends/winx-viking.c
 deps = vui viking winx
+ghost_deps = $build_dir/assets-winx-viking.c
 cflags = $cflags
 ldflags = $ldflags
 incpath = $build_dir
+
+[$build_dir/assets-winx-viking.c]
+type = bundle
+src = $fonts
+deps = $shader_spvs
+
+[$build_dir/shaders/winx-viking/shape.vert.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/shape.vert.spv shaders/winx-viking/shape.vert
+src = shaders/winx-viking/shape.vert
+
+[$build_dir/shaders/winx-viking/shape.frag.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/shape.frag.spv shaders/winx-viking/shape.frag
+src = shaders/winx-viking/shape.frag
+
+[$build_dir/shaders/winx-viking/circle.vert.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/circle.vert.spv shaders/winx-viking/circle.vert
+src = shaders/winx-viking/circle.vert
+
+[$build_dir/shaders/winx-viking/circle.frag.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/circle.frag.spv shaders/winx-viking/circle.frag
+src = shaders/winx-viking/circle.frag
+
+[$build_dir/shaders/winx-viking/text.vert.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/text.vert.spv shaders/winx-viking/text.vert
+src = shaders/winx-viking/text.vert
+
+[$build_dir/shaders/winx-viking/text.frag.spv]
+type = custom
+cmd = glslc -o $build_dir/shaders/winx-viking/text.frag.spv shaders/winx-viking/text.frag
+src = shaders/winx-viking/text.frag
 
 [viking]
 type = custom
