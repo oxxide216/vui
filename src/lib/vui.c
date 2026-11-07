@@ -72,17 +72,23 @@ void vui_end_frame(Vui *vui) {
     switch (layout->kind) {
     case VuiLayoutKindVertical: {
       w = layout->w - layout->outer_padding * 2.0;
-      h = (layout->h -
-           layout->outer_padding * 2.0 -
-           layout->inner_padding * (layout->len - 1) -
-           fixed_space) / fills_count;
+      if (fills_count == 0)
+        h = 0.0;
+      else
+        h = (layout->h -
+             layout->outer_padding * 2.0 -
+             layout->inner_padding * (layout->len - 1) -
+             fixed_space) / fills_count;
     } break;
 
     case VuiLayoutKindHorizontal: {
-      w = (layout->w -
-           layout->outer_padding * 2.0 -
-           layout->inner_padding * (layout->len - 1) -
-           fixed_space) / fills_count;
+      if (fills_count == 0)
+        w = 0.0;
+      else
+        w = (layout->w -
+             layout->outer_padding * 2.0 -
+             layout->inner_padding * (layout->len - 1) -
+             fixed_space) / fills_count;
       h = layout->h - layout->outer_padding * 2.0;
     } break;
     }
