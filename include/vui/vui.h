@@ -42,11 +42,12 @@ typedef enum {
 typedef struct {
   f32  x, y, w, h;
   bool is_released;
+  u32  layout_index;
 } VuiWidgetState;
 
 typedef struct {
   Da(VuiWidgetState) states;
-  u32                 pos;
+  u32                pos;
 } VuiWidgetStackItem;
 
 typedef Da(VuiWidgetStackItem) VuiWidgetStack;
@@ -61,7 +62,8 @@ typedef struct {
   u32           depth;
   u32           pos;
   u32           len;
-  f32           padding;
+  f32           outer_padding;
+  f32           inner_padding;
   f32           x, y, w, h;
 } VuiLayout;
 
@@ -70,8 +72,8 @@ typedef Da(VuiLayout) VuiLayouts;
 typedef struct {
   VuiBackend     *backend;
   VuiWidgetStack  stack;
-  u32             depth;
   VuiLayouts      layouts;
+  u32             current_layout;
 } Vui;
 
 bool vui_init(Vui *vui, VuiBackend *backend);
@@ -80,5 +82,8 @@ void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
 
 bool vui_button(Vui *vui, const char *text);
+void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding);
+void vui_layout_begin_horz(Vui *vui, f32 outer_padding, f32 inner_padding);
+void vui_layout_end(Vui *vui);
 
 #endif // VUI_H

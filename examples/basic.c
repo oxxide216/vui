@@ -48,10 +48,18 @@ i32 main(void) {
     }
 
     vui_begin_frame(&vui);
-    if (vui_button(&vui, "0"))
-      puts("0");
-    if (vui_button(&vui, "1"))
-      puts("1");
+      vui_layout_begin_vert(&vui, 0.0, 5.0);
+        if (vui_button(&vui, "0"))
+          puts("0");
+        if (vui_button(&vui, "1"))
+          puts("1");
+      vui_layout_end(&vui);
+      vui_layout_begin_horz(&vui, 0.0, 5.0);
+        if (vui_button(&vui, "2"))
+          puts("2");
+        if (vui_button(&vui, "3"))
+          puts("3");
+      vui_layout_end(&vui);
     vui_end_frame(&vui);
 
     vik_end_frame(executor);
