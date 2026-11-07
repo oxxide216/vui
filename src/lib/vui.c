@@ -151,8 +151,11 @@ bool vui_button(Vui *vui, const char *text) {
   if (state->is_hovered) {
     if (vui->mouse_down_this_frame)
       state->is_pressed = true;
-    if (state->is_pressed && vui->mouse_up_this_frame)
+
+    if (state->is_pressed && vui->mouse_up_this_frame) {
+      state->is_pressed = false;
       state->is_released = true;
+    }
   } else {
     state->is_pressed = false;
   }
