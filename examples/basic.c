@@ -38,6 +38,7 @@ i32 main(void) {
     WinxEvent event;
     while ((event = winx_get_event(window, false)).kind != WinxEventKindNone) {
       is_running = event.kind != WinxEventKindQuit;
+      vui_winx_vulkan_process_event(&vui, &event);
       if (!is_running)
         break;
     }

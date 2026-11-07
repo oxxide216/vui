@@ -41,6 +41,8 @@ typedef enum {
 
 typedef struct {
   f32  x, y, w, h;
+  bool is_hovered;
+  bool is_pressed;
   bool is_released;
   u32  layout_index;
 } VuiWidgetState;
@@ -74,12 +76,20 @@ typedef struct {
   VuiWidgetStack  stack;
   VuiLayouts      layouts;
   u32             current_layout;
+  f32             mouse_x;
+  f32             mouse_y;
+  bool            mouse_down_this_frame;
+  bool            mouse_up_this_frame;
 } Vui;
 
 bool vui_init(Vui *vui, VuiBackend *backend);
 void vui_begin_frame(Vui *vui);
 void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
+
+void vui_on_mouse_move(Vui *vui, f32 x, f32 y);
+void vui_on_mouse_down(Vui *vui);
+void vui_on_mouse_up(Vui *vui);
 
 bool vui_button(Vui *vui, const char *text);
 void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding);

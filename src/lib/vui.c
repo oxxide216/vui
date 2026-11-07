@@ -7,8 +7,10 @@
 #define BORDER_RADIUS         10.0
 #define MAX_FONT_SCALE        96.0
 
-#define BUTTON_COLOR 0x20/255.0, 0x20/255.0, 0x20/255.0, 0xff/255.0
-#define FG_COLOR     0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
+#define BUTTON_BASE_COLOR    0x20/255.0, 0x20/255.0, 0x20/255.0, 0xff/255.0
+#define BUTTON_HOVERED_COLOR 0x24/255.0, 0x24/255.0, 0x24/255.0, 0xff/255.0
+#define BUTTON_ACTIVE_COLOR  0x28/255.0, 0x28/255.0, 0x28/255.0, 0xff/255.0
+#define FG_COLOR             0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
 
 bool vui_init(Vui *vui, VuiBackend *backend) {
   vui->backend = backend;
@@ -92,6 +94,9 @@ void vui_end_frame(Vui *vui) {
       }
     }
   }
+
+  vui->mouse_down_this_frame = false;
+  vui->mouse_up_this_frame = false;
 }
 
 void vui_destroy(Vui *vui) {
@@ -107,6 +112,19 @@ void vui_destroy(Vui *vui) {
     free(vui->layouts.items);
 }
 
+void vui_on_mouse_move(Vui *vui, f32 x, f32 y) {
+  vui->mouse_x = x;
+  vui->mouse_y = y;
+}
+
+void vui_on_mouse_down(Vui *vui) {
+  vui->mouse_down_this_frame = true;
+}
+
+void vui_on_mouse_up(Vui *vui) {
+  vui->mouse_up_this_frame = true;
+}
+
 static VuiWidgetState *push_widget(Vui *vui) {
   VuiLayout *current = vui->layouts.items + vui->current_layout;
   VuiWidgetStackItem *item = vui->stack.items + current->depth;
@@ -117,17 +135,43 @@ static VuiWidgetState *push_widget(Vui *vui) {
     DA_APPEND(item->states, new);
   }
 
-  return item->states.items + current->pos + current->len++;
+  VuiWidgetState *result = item->states.items + current->pos + current->len++;
+
+  result->is_hovered =
+    vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
+    vui->mouse_y >= result->y && vui->mouse_y <= result->y + result->h;
+  result->is_released = false;
+
+  return result;
 }
 
 bool vui_button(Vui *vui, const char *text) {
   VuiWidgetState *state = push_widget(vui);
 
-  vui->backend->draw_rounded_rect(vui->backend->data,
-                                  BORDER_RADIUS,
-                                  state->x, state->y,
-                                  state->w, state->h,
-                                  BUTTON_COLOR);
+  if (state->is_hovered && vui->mouse_down_this_frame)
+    state->is_pressed = true;
+
+  if (state->is_hovered && state->is_pressed && vui->mouse_up_this_frame)
+    state->is_released = true;
+
+  if (state->is_pressed)
+    vui->backend->draw_rounded_rect(vui->backend->data,
+                                    BORDER_RADIUS,
+                                    state->x, state->y,
+                                    state->w, state->h,
+                                    BUTTON_ACTIVE_COLOR);
+  else if (state->is_hovered)
+    vui->backend->draw_rounded_rect(vui->backend->data,
+                                    BORDER_RADIUS,
+                                    state->x, state->y,
+                                    state->w, state->h,
+                                    BUTTON_HOVERED_COLOR);
+  else
+    vui->backend->draw_rounded_rect(vui->backend->data,
+                                    BORDER_RADIUS,
+                                    state->x, state->y,
+                                    state->w, state->h,
+                                    BUTTON_BASE_COLOR);
 
   f32 font_scale = fminf(state->h, MAX_FONT_SCALE);
   f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);

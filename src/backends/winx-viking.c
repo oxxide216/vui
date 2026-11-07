@@ -589,3 +589,29 @@ bool vui_winx_vulkan_backend_init(VuiBackend *backend,
 
   return true;
 }
+
+bool vui_winx_vulkan_process_event(Vui *vui, WinxEvent *event) {
+  switch (event->kind) {
+  case WinxEventKindMouseMove: {
+    vui_on_mouse_move(vui, event->as.mouse_move.x, event->as.mouse_move.y);
+  } break;
+
+  case WinxEventKindButtonPress: {
+    if (event->as.button.button == WinxMouseButtonLeft) {
+      vui_on_mouse_down(vui);
+      return true;
+    }
+  } break;
+
+  case WinxEventKindButtonRelease: {
+    if (event->as.button.button == WinxMouseButtonLeft) {
+      vui_on_mouse_up(vui);
+      return true;
+    }
+  } break;
+
+  default: break;
+  }
+
+  return false;
+}
