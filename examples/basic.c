@@ -10,7 +10,7 @@
 static Str read_file(char *path) {
   Str content;
 
-  FILE *file = fopen(path, "r");
+  FILE *file = fopen(path, "rb");
   if (!file)
     return (Str) { NULL, (u32) -1 };
 
