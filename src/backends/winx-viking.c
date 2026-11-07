@@ -236,6 +236,11 @@ static void draw_rect(VuiBackendData *data,
 static void draw_rounded_rect(VuiBackendData *data, f32 radius,
                               f32 x, f32 y, f32 w, f32 h,
                               f32 r, f32 g, f32 b, f32 a) {
+  if (radius > w * 0.5)
+    radius = w * 0.5;
+  if (radius > h * 0.5)
+    radius = h * 0.5;
+
   f32 ix = x + radius;
   f32 iy = y + radius;
   f32 iw = w - radius * 2.0;
