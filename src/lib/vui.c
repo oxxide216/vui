@@ -4,7 +4,7 @@
 
 #define DEFAULT_OUTER_PADDING 10.0
 #define DEFAULT_INNER_PADDING 10.0
-#define BORDER_RADIUS         10.0
+#define BORDER_RADIUS         15.0
 #define MAX_FONT_SCALE        96.0
 
 #define BUTTON_BASE_COLOR    0x20/255.0, 0x20/255.0, 0x20/255.0, 0xff/255.0
