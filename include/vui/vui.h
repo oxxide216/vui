@@ -34,11 +34,6 @@ typedef struct {
   VuiBackendDestroyFunc          destroy;
 } VuiBackend;
 
-typedef enum {
-  VuiWidgetKindButton = 0,
-  VuiWidgetKindsCount,
-} VuiWidgetKind;
-
 typedef struct {
   f32  x, y, w, h;
   bool is_hovered;
