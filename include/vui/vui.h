@@ -82,13 +82,15 @@ void vui_begin_frame(Vui *vui);
 void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
 
-void vui_on_mouse_move(Vui *vui, f32 x, f32 y);
-void vui_on_mouse_down(Vui *vui);
-void vui_on_mouse_up(Vui *vui);
-
+// Widgets
 bool vui_button(Vui *vui, const char *text);
 void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding);
 void vui_layout_begin_horz(Vui *vui, f32 outer_padding, f32 inner_padding);
 void vui_layout_end(Vui *vui);
+
+// These probably will be called for you by a backend
+void vui_on_mouse_move(Vui *vui, f32 x, f32 y);
+void vui_on_mouse_down(Vui *vui);
+void vui_on_mouse_up(Vui *vui);
 
 #endif // VUI_H
