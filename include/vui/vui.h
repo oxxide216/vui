@@ -85,6 +85,7 @@ typedef struct {
   u32             current_layout;
   VuiConstraint   constraint;
   VuiConstraint   children_constraint;
+  f32             bg_r, bg_g, bg_b, bg_a;
   f32             mouse_x;
   f32             mouse_y;
   bool            mouse_down_this_frame;
@@ -109,6 +110,8 @@ void vui_cons_fixed(Vui *vui, f32 value);
 // Constraints for all children of the following element
 void vui_ccons_fill(Vui *vui);
 void vui_ccons_fixed(Vui *vui, f32 value);
+
+void vui_bg_color(Vui *vui, f32 r, f32 g, f32 b, f32 a);
 
 // These probably will be called for you by a backend
 void vui_on_mouse_move(Vui *vui, f32 x, f32 y);

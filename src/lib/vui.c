@@ -7,10 +7,11 @@
 #define BORDER_RADIUS         15.0
 #define MAX_FONT_SCALE        96.0
 
-#define BUTTON_BASE_COLOR    0x20/255.0, 0x20/255.0, 0x20/255.0, 0xff/255.0
-#define BUTTON_HOVERED_COLOR 0x24/255.0, 0x24/255.0, 0x24/255.0, 0xff/255.0
-#define BUTTON_ACTIVE_COLOR  0x28/255.0, 0x28/255.0, 0x28/255.0, 0xff/255.0
+#define BG_COLOR             0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
 #define FG_COLOR             0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
+#define BUTTON_BASE_COLOR    0x24/255.0, 0x24/255.0, 0x24/255.0, 0xff/255.0
+#define BUTTON_HOVERED_COLOR 0x28/255.0, 0x28/255.0, 0x28/255.0, 0xff/255.0
+#define BUTTON_ACTIVE_COLOR  0x2c/255.0, 0x2c/255.0, 0x2c/255.0, 0xff/255.0
 
 bool vui_init(Vui *vui, VuiBackend *backend) {
   vui->backend = backend;
@@ -40,6 +41,13 @@ void vui_begin_frame(Vui *vui) {
   vui_ccons_fill(vui);
 
   vui->backend->begin_frame(vui->backend->data);
+  vui->backend->draw_rect(vui->backend->data,
+                          layout.x, layout.y,
+                          layout.w, layout.h,
+                          vui->bg_r, vui->bg_g,
+                          vui->bg_b, vui->bg_a);
+
+  vui_bg_color(vui, 0.0, 0.0, 0.0, 0.0);
 }
 
 void vui_end_frame(Vui *vui) {
@@ -142,6 +150,8 @@ void vui_end_frame(Vui *vui) {
     }
   }
 
+  vui_bg_color(vui, BG_COLOR);
+
   vui->mouse_down_this_frame = false;
   vui->mouse_up_this_frame = false;
 }
@@ -176,6 +186,14 @@ static VuiWidgetState *push_widget(Vui *vui) {
   result->constraint = vui->constraint;
 
   vui->constraint = vui->children_constraint;
+
+  vui->backend->draw_rect(vui->backend->data,
+                          result->x, result->y,
+                          result->w, result->h,
+                          vui->bg_r, vui->bg_g,
+                          vui->bg_b, vui->bg_a);
+
+  vui_bg_color(vui, 0.0, 0.0, 0.0, 0.0);
 
   return result;
 }
@@ -279,6 +297,13 @@ void vui_ccons_fill(Vui *vui) {
 
 void vui_ccons_fixed(Vui *vui, f32 value) {
   vui->children_constraint = (VuiConstraint) { VuiConstraintKindFixed, value };
+}
+
+void vui_bg_color(Vui *vui, f32 r, f32 g, f32 b, f32 a) {
+  vui->bg_r = r;
+  vui->bg_g = g;
+  vui->bg_b = b;
+  vui->bg_a = a;
 }
 
 void vui_on_mouse_move(Vui *vui, f32 x, f32 y) {
