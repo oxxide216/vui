@@ -49,7 +49,7 @@ i32 main(void) {
     }
 
     vui_begin_frame(&vui);
-      vui_layout_begin_vert(&vui, 0.0, 5.0);
+      vui_layout_begin_vert(&vui, 0.0, 10.0);
         if (vui_button(&vui, "0"))
           puts("0");
         if (vui_button(&vui, "1"))
