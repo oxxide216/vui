@@ -11,11 +11,12 @@
 #define BORDER_RADIUS                15.0
 #define MAX_FONT_SCALE               96.0
 
-#define BG_COLOR             0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
-#define FG_COLOR             0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
-#define BUTTON_BASE_COLOR    0x24/255.0, 0x24/255.0, 0x24/255.0, 0xff/255.0
-#define BUTTON_HOVERED_COLOR 0x28/255.0, 0x28/255.0, 0x28/255.0, 0xff/255.0
-#define BUTTON_ACTIVE_COLOR  0x2c/255.0, 0x2c/255.0, 0x2c/255.0, 0xff/255.0
+#define BG_COLOR              0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
+#define FG_COLOR              0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
+#define BUTTON_DISABLED_COLOR 0x20/255.0, 0x20/255.0, 0x20/255.0, 0xff/255.0
+#define BUTTON_BASE_COLOR     0x24/255.0, 0x24/255.0, 0x24/255.0, 0xff/255.0
+#define BUTTON_HOVERED_COLOR  0x28/255.0, 0x28/255.0, 0x28/255.0, 0xff/255.0
+#define BUTTON_ACTIVE_COLOR   0x2c/255.0, 0x2c/255.0, 0x2c/255.0, 0xff/255.0
 
 bool vui_init(Vui *vui, VuiBackend *backend) {
   vui->backend = backend;
@@ -298,22 +299,30 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
   return result;
 }
 
-bool vui_button_id(Vui *vui, u64 id, const char *text) {
+bool vui_button_id(Vui *vui, u64 id, const char *text, bool is_enabled) {
   VuiWidgetState *state = push_widget(vui, id);
 
-  if (state->is_hovered) {
-    if (vui->mouse_down_this_frame)
-      state->is_pressed = true;
+  if (is_enabled) {
+    if (state->is_hovered) {
+      if (vui->mouse_down_this_frame)
+        state->is_pressed = true;
 
-    if (state->is_pressed && vui->mouse_up_this_frame) {
+      if (state->is_pressed && vui->mouse_up_this_frame) {
+        state->is_pressed = false;
+        state->is_released = true;
+      }
+    } else {
       state->is_pressed = false;
-      state->is_released = true;
     }
-  } else {
-    state->is_pressed = false;
   }
 
-  if (state->is_pressed)
+  if (!is_enabled)
+    vui->backend->draw_rounded_rect(vui->backend->data,
+                                    BORDER_RADIUS,
+                                    state->x, state->y,
+                                    state->w, state->h,
+                                    BUTTON_DISABLED_COLOR);
+  else if (state->is_pressed)
     vui->backend->draw_rounded_rect(vui->backend->data,
                                     BORDER_RADIUS,
                                     state->x, state->y,
@@ -340,7 +349,7 @@ bool vui_button_id(Vui *vui, u64 id, const char *text) {
   f32 y = state->y + (state->h - font_scale) * 0.5;
   vui->backend->draw_text(vui->backend->data, text, font_scale, x, y, FG_COLOR);
 
-  return state->is_released;
+  return is_enabled && state->is_released;
 }
 
 static void vui_layout_begin(Vui *vui, u64 id,

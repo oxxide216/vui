@@ -52,16 +52,16 @@ i32 main(void) {
       vui_cons_fixed(&vui, 50.0);
       vui_label(&vui, "Example App");
       vui_layout_begin_vert(&vui, 0.0, 10.0);
-        if (vui_button(&vui, "0"))
+        if (vui_button(&vui, "0", true))
           puts("0");
-        if (vui_button(&vui, "1"))
+        if (vui_button(&vui, "1", true))
           puts("1");
       vui_layout_end(&vui);
       vui_cons_fixed(&vui, 50.0);
       vui_layout_begin_horz(&vui, 0.0, 5.0);
-        if (vui_button(&vui, "2"))
+        if (vui_button(&vui, "2", true))
           puts("2");
-        if (vui_button(&vui, "3"))
+        if (vui_button(&vui, "3", true))
           puts("3");
       vui_layout_end(&vui);
     vui_end_frame(&vui);

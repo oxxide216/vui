@@ -14,8 +14,8 @@
 
 #define VUI_ID() (str_hash(STR_LIT(__FILE__)) + __LINE__)
 
-#define vui_button(vui, text)        \
-  vui_button_id(vui, VUI_ID(), text)
+#define vui_button(vui, text, is_enabled)        \
+  vui_button_id(vui, VUI_ID(), text, is_enabled)
 #define vui_layout_begin_vert(vui, outer_padding, inner_padding)        \
   vui_layout_begin_vert_id(vui, VUI_ID(), outer_padding, inner_padding)
 #define vui_layout_begin_horz(vui, outer_padding, inner_padding)        \
@@ -151,7 +151,7 @@ void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
 
 // Widgets
-bool vui_button_id(Vui *vui, u64 id, const char *text);
+bool vui_button_id(Vui *vui, u64 id, const char *text, bool is_enabled);
 void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
 void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
 void vui_layout_end(Vui *vui);
