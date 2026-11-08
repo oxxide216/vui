@@ -73,7 +73,6 @@ typedef struct {
   f32           outer_padding;
   f32           inner_padding;
   f32           x, y, w, h;
-  VuiConstraint constraint;
 } VuiLayout;
 
 typedef Da(VuiLayout) VuiLayouts;
@@ -84,13 +83,24 @@ typedef struct {
   VuiLayouts      layouts;
   u32             current_layout;
   VuiConstraint   constraint;
-  VuiConstraint   children_constraint;
   f32             bg_r, bg_g, bg_b, bg_a;
   f32             mouse_x;
   f32             mouse_y;
   bool            mouse_down_this_frame;
   bool            mouse_up_this_frame;
 } Vui;
+
+typedef enum {
+  VuiHAlignLeft = 0,
+  VuiHAlignCenter,
+  VuiHAlignRight,
+} VuiHAlign;
+
+typedef enum {
+  VuiVAlignTop = 0,
+  VuiVAlignCenter,
+  VuiVAlignBottom,
+} VuiVAlign;
 
 bool vui_init(Vui *vui, VuiBackend *backend);
 void vui_begin_frame(Vui *vui);
@@ -102,14 +112,13 @@ bool vui_button(Vui *vui, const char *text);
 void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding);
 void vui_layout_begin_horz(Vui *vui, f32 outer_padding, f32 inner_padding);
 void vui_layout_end(Vui *vui);
+void vui_label(Vui *vui, const char *text);
+void vui_label_ex(Vui *vui, const char *text, f32 padding,
+                  VuiHAlign h_align, VuiVAlign v_align);
 
 // Constraints for the following element
 void vui_cons_fill(Vui *vui); // Default
 void vui_cons_fixed(Vui *vui, f32 value);
-
-// Constraints for all children of the following element
-void vui_ccons_fill(Vui *vui);
-void vui_ccons_fixed(Vui *vui, f32 value);
 
 void vui_bg_color(Vui *vui, f32 r, f32 g, f32 b, f32 a);
 

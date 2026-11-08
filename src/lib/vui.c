@@ -2,10 +2,12 @@
 
 #include "vui/vui.h"
 
-#define DEFAULT_OUTER_PADDING 10.0
-#define DEFAULT_INNER_PADDING 10.0
-#define BORDER_RADIUS         15.0
-#define MAX_FONT_SCALE        96.0
+#define DEFAULT_LAYOUT_OUTER_PADDING 10.0
+#define DEFAULT_LAYOUT_INNER_PADDING 10.0
+#define DEFAULT_LABEL_PADDING        10.0
+#define BUTTON_PADDING_PERC          0.2
+#define BORDER_RADIUS                15.0
+#define MAX_FONT_SCALE               96.0
 
 #define BG_COLOR             0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
 #define FG_COLOR             0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
@@ -29,16 +31,13 @@ void vui_begin_frame(Vui *vui) {
   VuiLayout layout = {
     VuiLayoutKindVertical,
     0, 0, 0,
-    DEFAULT_OUTER_PADDING,
-    DEFAULT_INNER_PADDING,
+    DEFAULT_LAYOUT_OUTER_PADDING,
+    DEFAULT_LAYOUT_INNER_PADDING,
     0.0, 0.0, 0.0, 0.0,
-    vui->children_constraint,
   };
   vui->backend->get_window_size(vui->backend->data, &layout.w, &layout.h);
   DA_APPEND(vui->layouts, layout);
   vui->current_layout = 0;
-
-  vui_ccons_fill(vui);
 
   vui->backend->begin_frame(vui->backend->data);
   vui->backend->draw_rect(vui->backend->data,
@@ -185,7 +184,7 @@ static VuiWidgetState *push_widget(Vui *vui) {
   result->layout_index = (u32) -1;
   result->constraint = vui->constraint;
 
-  vui->constraint = vui->children_constraint;
+  vui_cons_fill(vui);
 
   vui->backend->draw_rect(vui->backend->data,
                           result->x, result->y,
@@ -194,6 +193,29 @@ static VuiWidgetState *push_widget(Vui *vui) {
                           vui->bg_b, vui->bg_a);
 
   vui_bg_color(vui, 0.0, 0.0, 0.0, 0.0);
+
+  return result;
+}
+
+static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
+  const f32 max_diff = 5.0;
+
+  f32 result = fminf(h, MAX_FONT_SCALE);
+  f32 min = 0.0, max = result * 2.0;
+
+  for (u32 i = 0; i < 25; ++i) {
+    f32 measured =
+      vui->backend->measure_text(vui->backend->data, text, result);
+    if (w - measured > max_diff) {
+      min = result;
+      result = (result + max) * 0.5;
+    } else if (w - measured < -max_diff) {
+      max = result;
+      result = (result + min) * 0.5;
+    } else {
+      break;
+    }
+  }
 
   return result;
 }
@@ -232,7 +254,9 @@ bool vui_button(Vui *vui, const char *text) {
                                     state->w, state->h,
                                     BUTTON_BASE_COLOR);
 
-  f32 font_scale = fminf(state->h, MAX_FONT_SCALE);
+  f32 font_scale = fit_text(vui, text,
+                            state->w * (1.0 - BUTTON_PADDING_PERC * 2.0),
+                            state->h * (1.0 - BUTTON_PADDING_PERC * 2.0));
   f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
   f32 x = state->x + (state->w - w) * 0.5;
   f32 y = state->y + (state->h - font_scale) * 0.5;
@@ -253,10 +277,7 @@ static void vui_layout_begin(Vui *vui,
     current->depth + 1, 0, 0,
     outer_padding, inner_padding,
     state->x, state->y, state->w, state->h,
-    vui->children_constraint,
   };
-
-  vui_ccons_fill(vui);
 
   if (new.depth >= vui->stack.len)
     DA_APPEND(vui->stack, (VuiWidgetStackItem) {0});
@@ -283,20 +304,59 @@ void vui_layout_end(Vui *vui) {
     --vui->current_layout;
 }
 
+void vui_label(Vui *vui, const char *text) {
+  vui_label_ex(vui, text, DEFAULT_LABEL_PADDING,
+               VuiHAlignLeft, VuiVAlignCenter);
+}
+
+void vui_label_ex(Vui *vui, const char *text, f32 padding,
+                  VuiHAlign h_align, VuiVAlign v_align) {
+  VuiWidgetState *state = push_widget(vui);
+
+  f32 font_scale = fit_text(vui, text,
+                            state->w - padding * 2.0,
+                            state->h - padding * 2.0);
+  f32 x, y;
+
+  switch (h_align) {
+  case VuiHAlignLeft: {
+    x = state->x + padding;
+  } break;
+
+  case VuiHAlignCenter: {
+    f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
+    x = state->x + (state->w - w) * 0.5;
+  } break;
+
+  case VuiHAlignRight: {
+    f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
+    x = state->x + state->w - w - padding;
+  } break;
+  }
+
+  switch (v_align) {
+  case VuiVAlignTop: {
+    y = state->y + padding;
+  } break;
+
+  case VuiVAlignCenter: {
+    y = state->y + (state->h - font_scale) * 0.5;
+  } break;
+
+  case VuiVAlignBottom: {
+    y = state->y + state->h - font_scale - padding;
+  } break;
+  }
+
+  vui->backend->draw_text(vui->backend->data, text, font_scale, x, y, FG_COLOR);
+}
+
 void vui_cons_fill(Vui *vui) {
   vui->constraint = (VuiConstraint) { VuiConstraintKindFill, 0.0 };
 }
 
 void vui_cons_fixed(Vui *vui, f32 value) {
   vui->constraint = (VuiConstraint) { VuiConstraintKindFixed, value };
-}
-
-void vui_ccons_fill(Vui *vui) {
-  vui->children_constraint = (VuiConstraint) { VuiConstraintKindFill, 0.0 };
-}
-
-void vui_ccons_fixed(Vui *vui, f32 value) {
-  vui->children_constraint = (VuiConstraint) { VuiConstraintKindFixed, value };
 }
 
 void vui_bg_color(Vui *vui, f32 r, f32 g, f32 b, f32 a) {

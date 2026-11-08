@@ -49,6 +49,8 @@ i32 main(void) {
     }
 
     vui_begin_frame(&vui);
+      vui_cons_fixed(&vui, 50.0);
+      vui_label(&vui, "Example App");
       vui_layout_begin_vert(&vui, 0.0, 10.0);
         if (vui_button(&vui, "0"))
           puts("0");
