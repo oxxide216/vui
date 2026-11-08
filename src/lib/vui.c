@@ -277,7 +277,7 @@ static VuiWidgetState *push_widget(Vui *vui, u64 id) {
   return result;
 }
 
-static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
+static f32 fit_text(Vui *vui, const u32 *text, u32 text_len, f32 w, f32 h) {
   const f32 max_diff = 5.0;
 
   f32 result = fminf(h, MAX_FONT_SCALE);
@@ -285,7 +285,7 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
 
   for (u32 i = 0; i < 25; ++i) {
     f32 measured =
-      vui->backend->measure_text(vui->backend->data, text, strlen(text), result);
+      vui->backend->measure_text(vui->backend->data, text, text_len, result);
     if (w - measured > max_diff) {
       min = result;
       result = (result + max) * 0.5;
@@ -301,7 +301,15 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
 }
 
 bool vui_button_id(Vui *vui, u64 id, const char *text,
-                   u32 text_len, bool is_enabled) {
+                     u32 text_len, bool is_enabled) {
+  u32 *wide_text = alloca(text_len * sizeof(*wide_text));
+  for (u32 i = 0; i < text_len; ++i)
+    wide_text[i] = text[i];
+  return vui_button_w_id(vui, id, wide_text, text_len, is_enabled);
+}
+
+bool vui_button_w_id(Vui *vui, u64 id, const u32 *text,
+                     u32 text_len, bool is_enabled) {
   VuiWidgetState *state = push_widget(vui, id);
 
   if (is_enabled) {
@@ -343,7 +351,7 @@ bool vui_button_id(Vui *vui, u64 id, const char *text,
                                     state->w, state->h,
                                     BUTTON_BASE_COLOR);
 
-  f32 font_scale = fit_text(vui, text,
+  f32 font_scale = fit_text(vui, text, text_len,
                             state->w * (1.0 - BUTTON_PADDING_PERC * 2.0),
                             state->h * (1.0 - BUTTON_PADDING_PERC * 2.0));
   f32 w = vui->backend->measure_text(vui->backend->data, text, text_len, font_scale);
@@ -394,16 +402,31 @@ void vui_layout_end(Vui *vui) {
 }
 
 void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len) {
-  vui_label_ex_id(vui, id, text, text_len,
-                  DEFAULT_LABEL_PADDING,
-                  VuiHAlignLeft, VuiVAlignCenter);
+  u32 *wide_text = alloca(text_len * sizeof(*wide_text));
+  for (u32 i = 0; i < text_len; ++i)
+    wide_text[i] = text[i];
+  return vui_label_w_id(vui, id, wide_text, text_len);
+}
+
+void vui_label_w_id(Vui *vui, u64 id, const u32 *text, u32 text_len) {
+  vui_label_ex_w_id(vui, id, text, text_len,
+                    DEFAULT_LABEL_PADDING,
+                    VuiHAlignLeft, VuiVAlignCenter);
 }
 
 void vui_label_ex_id(Vui *vui, u64 id, const char *text, u32 text_len,
                      f32 padding, VuiHAlign h_align, VuiVAlign v_align) {
+  u32 *wide_text = alloca(text_len * sizeof(*wide_text));
+  for (u32 i = 0; i < text_len; ++i)
+    wide_text[i] = text[i];
+  return vui_label_ex_w_id(vui, id, wide_text, text_len, padding, h_align, v_align);
+}
+
+void vui_label_ex_w_id(Vui *vui, u64 id, const u32 *text, u32 text_len,
+                       f32 padding, VuiHAlign h_align, VuiVAlign v_align) {
   VuiWidgetState *state = push_widget(vui, id);
 
-  f32 font_scale = fit_text(vui, text,
+  f32 font_scale = fit_text(vui, text, text_len,
                             state->w - padding * 2.0,
                             state->h - padding * 2.0);
   f32 x, y;

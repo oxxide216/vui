@@ -459,7 +459,7 @@ static void get_char_mapping(VuiBackendData *data, u32 _char,
     *out_br_v = o_br_v;
 }
 
-static f32 measure_text(VuiBackendData *data, const char *text,
+static f32 measure_text(VuiBackendData *data, const u32 *text,
                         u32 text_len, f32 font_scale) {
   f32 width = 0.0;
 
@@ -470,7 +470,7 @@ static f32 measure_text(VuiBackendData *data, const char *text,
   return width;
 }
 
-static void draw_text(VuiBackendData *data, const char *text,
+static void draw_text(VuiBackendData *data, const u32 *text,
                       u32 text_len, f32 font_scale, f32 x, f32 y,
                       f32 r, f32 g, f32 b, f32 a) {
   (void) a;
