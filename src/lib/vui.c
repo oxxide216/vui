@@ -6,8 +6,8 @@
 
 #define DEFAULT_LAYOUT_OUTER_PADDING 10.0
 #define DEFAULT_LAYOUT_INNER_PADDING 10.0
-#define DEFAULT_LABEL_PADDING        10.0
-#define BUTTON_PADDING_PERC          0.2
+#define DEFAULT_LABEL_PADDING        5.0
+#define BUTTON_PADDING_PERC          0.1
 #define BORDER_RADIUS                15.0
 #define MAX_FONT_SCALE               96.0
 
@@ -279,7 +279,7 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
   const f32 max_diff = 5.0;
 
   f32 result = fminf(h, MAX_FONT_SCALE);
-  f32 min = 0.0, max = result * 2.0;
+  f32 min = 0.0, max = result;
 
   for (u32 i = 0; i < 25; ++i) {
     f32 measured =
