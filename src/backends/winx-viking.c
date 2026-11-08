@@ -331,6 +331,7 @@ static void get_char_data(VuiBackendData *data, u32 _char, f32 scale,
   if (!cache) {
     DA_APPEND(data->glyphs_cache, (Glyphs) {0});
     cache = data->glyphs_cache.items + data->glyphs_cache.len - 1;
+    cache->scale = scale;
   }
 
   for (u32 i = 0; i < cache->data.len; ++i) {
