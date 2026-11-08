@@ -265,11 +265,12 @@ static VuiWidgetState *push_widget(Vui *vui, u64 id) {
 
   vui_cons_fill(vui);
 
-  vui->backend->draw_rect(vui->backend->data,
-                          result->x, result->y,
-                          result->w, result->h,
-                          vui->bg_r, vui->bg_g,
-                          vui->bg_b, vui->bg_a);
+  vui->backend->draw_rounded_rect(vui->backend->data,
+                                  BORDER_RADIUS,
+                                  result->x, result->y,
+                                  result->w, result->h,
+                                  vui->bg_r, vui->bg_g,
+                                  vui->bg_b, vui->bg_a);
 
   vui_bg_color(vui, 0.0, 0.0, 0.0, 0.0);
 
