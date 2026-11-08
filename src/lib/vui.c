@@ -285,7 +285,7 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
 
   for (u32 i = 0; i < 25; ++i) {
     f32 measured =
-      vui->backend->measure_text(vui->backend->data, text, result);
+      vui->backend->measure_text(vui->backend->data, text, strlen(text), result);
     if (w - measured > max_diff) {
       min = result;
       result = (result + max) * 0.5;
@@ -300,7 +300,8 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
   return result;
 }
 
-bool vui_button_id(Vui *vui, u64 id, const char *text, bool is_enabled) {
+bool vui_button_id(Vui *vui, u64 id, const char *text,
+                   u32 text_len, bool is_enabled) {
   VuiWidgetState *state = push_widget(vui, id);
 
   if (is_enabled) {
@@ -345,10 +346,10 @@ bool vui_button_id(Vui *vui, u64 id, const char *text, bool is_enabled) {
   f32 font_scale = fit_text(vui, text,
                             state->w * (1.0 - BUTTON_PADDING_PERC * 2.0),
                             state->h * (1.0 - BUTTON_PADDING_PERC * 2.0));
-  f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
+  f32 w = vui->backend->measure_text(vui->backend->data, text, text_len, font_scale);
   f32 x = state->x + (state->w - w) * 0.5;
   f32 y = state->y + (state->h - font_scale) * 0.5;
-  vui->backend->draw_text(vui->backend->data, text, font_scale, x, y, FG_COLOR);
+  vui->backend->draw_text(vui->backend->data, text, text_len, font_scale, x, y, FG_COLOR);
 
   return is_enabled && state->is_released;
 }
@@ -392,13 +393,14 @@ void vui_layout_end(Vui *vui) {
     --vui->current_layout;
 }
 
-void vui_label_id(Vui *vui, u64 id, const char *text) {
-  vui_label_ex_id(vui, id, text, DEFAULT_LABEL_PADDING,
+void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len) {
+  vui_label_ex_id(vui, id, text, text_len,
+                  DEFAULT_LABEL_PADDING,
                   VuiHAlignLeft, VuiVAlignCenter);
 }
 
-void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
-                  VuiHAlign h_align, VuiVAlign v_align) {
+void vui_label_ex_id(Vui *vui, u64 id, const char *text, u32 text_len,
+                     f32 padding, VuiHAlign h_align, VuiVAlign v_align) {
   VuiWidgetState *state = push_widget(vui, id);
 
   f32 font_scale = fit_text(vui, text,
@@ -412,12 +414,12 @@ void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
   } break;
 
   case VuiHAlignCenter: {
-    f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
+    f32 w = vui->backend->measure_text(vui->backend->data, text, text_len, font_scale);
     x = state->x + (state->w - w) * 0.5;
   } break;
 
   case VuiHAlignRight: {
-    f32 w = vui->backend->measure_text(vui->backend->data, text, font_scale);
+    f32 w = vui->backend->measure_text(vui->backend->data, text, text_len, font_scale);
     x = state->x + state->w - w - padding;
   } break;
   }
@@ -436,7 +438,7 @@ void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
   } break;
   }
 
-  vui->backend->draw_text(vui->backend->data, text, font_scale, x, y, FG_COLOR);
+  vui->backend->draw_text(vui->backend->data, text, text_len, font_scale, x, y, FG_COLOR);
 }
 
 void vui_cons_fill(Vui *vui) {

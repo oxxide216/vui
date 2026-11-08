@@ -459,11 +459,11 @@ static void get_char_mapping(VuiBackendData *data, u32 _char,
     *out_br_v = o_br_v;
 }
 
-static f32 measure_text(VuiBackendData *data, const char *text, f32 font_scale) {
+static f32 measure_text(VuiBackendData *data, const char *text,
+                        u32 text_len, f32 font_scale) {
   f32 width = 0.0;
 
-  u32 len = strlen(text);
-  for (u32 i = 0; i < len; ++i)
+  for (u32 i = 0; i < text_len; ++i)
     get_char_data(data, text[i], font_scale,
                   NULL, &width, NULL, NULL, NULL);
 
@@ -471,12 +471,11 @@ static f32 measure_text(VuiBackendData *data, const char *text, f32 font_scale) 
 }
 
 static void draw_text(VuiBackendData *data, const char *text,
-                      f32 font_scale, f32 x, f32 y,
+                      u32 text_len, f32 font_scale, f32 x, f32 y,
                       f32 r, f32 g, f32 b, f32 a) {
   (void) a;
 
-  u32 len = strlen(text);
-  for (u32 i = 0; i < len; ++i) {
+  for (u32 i = 0; i < text_len; ++i) {
     TextSSBOEntry text_entry = {
       x, y,       // Modified by get_char_data
       10.0, 10.0, // Overwritten by get_char_data

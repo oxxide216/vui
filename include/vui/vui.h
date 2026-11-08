@@ -14,16 +14,22 @@
 
 #define VUI_ID() (str_hash(STR_LIT(__FILE__)) + __LINE__)
 
-#define vui_button(vui, text, is_enabled)        \
-  vui_button_id(vui, VUI_ID(), text, is_enabled)
+#define vui_button(vui, text, is_enabled)           \
+  vui_button_s(vui, text, strlen(text), is_enabled)
+#define vui_button_s(vui, text, text_len, is_enabled)      \
+  vui_button_id(vui, VUI_ID(), text, text_len, is_enabled)
 #define vui_layout_begin_vert(vui, outer_padding, inner_padding)        \
   vui_layout_begin_vert_id(vui, VUI_ID(), outer_padding, inner_padding)
 #define vui_layout_begin_horz(vui, outer_padding, inner_padding)        \
   vui_layout_begin_horz_id(vui, VUI_ID(), outer_padding, inner_padding)
-#define vui_label(vui, text)        \
-  vui_label_id(vui, VUI_ID(), text)
-#define vui_label_ex(vui, text, padding, h_align, v_align)        \
-  vui_label_ex_id(vui, VUI_ID(), text, padding, h_align, v_align)
+#define vui_label(vui, text)           \
+  vui_label_s(vui, text, strlen(text))
+#define vui_label_s(vui, text, text_len)      \
+  vui_label_id(vui, VUI_ID(), text, text_len)
+#define vui_label_ex(vui, text, padding, h_align, v_align)           \
+  vui_label_ex_s(vui, text, strlen(text), padding, h_align, v_align)
+#define vui_label_ex_s(vui, text, text_len, padding, h_align, v_align)      \
+  vui_label_ex_id(vui, VUI_ID(), text, text_len, padding, h_align, v_align)
 
 typedef struct VuiBackendData VuiBackendData;
 
@@ -37,9 +43,10 @@ typedef void (*VuiBackendDrawRoundedRectFunc)(VuiBackendData *data, f32 radius,
                                               f32 r, f32 g, f32 b, f32 a);
 typedef f32 (*VuiBackendMeasureTextFunc)(VuiBackendData *data,
                                          const char *text,
+                                         u32 text_len,
                                          f32 font_scale);
 typedef void (*VuiBackendDrawTextFunc)(VuiBackendData *data, const char *text,
-                                       f32 font_scale, f32 x, f32 y,
+                                       u32 text_len, f32 font_scale, f32 x, f32 y,
                                        f32 r, f32 g, f32 b, f32 a);
 typedef void (*VuiBackendEndFrameFunc)(VuiBackendData *data);
 typedef void (*VuiBackendDestroyFunc)(VuiBackendData *data);
@@ -151,13 +158,13 @@ void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
 
 // Widgets
-bool vui_button_id(Vui *vui, u64 id, const char *text, bool is_enabled);
+bool vui_button_id(Vui *vui, u64 id, const char *text, u32 text_len, bool is_enabled);
 void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
 void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
 void vui_layout_end(Vui *vui);
-void vui_label_id(Vui *vui, u64 id, const char *text);
-void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
-                     VuiHAlign h_align, VuiVAlign v_align);
+void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len);
+void vui_label_ex_id(Vui *vui, u64 id, const char *text, u32 text_len,
+                     f32 padding, VuiHAlign h_align, VuiVAlign v_align);
 
 // Constraints for the following element
 void vui_cons_fill(Vui *vui); // Default
