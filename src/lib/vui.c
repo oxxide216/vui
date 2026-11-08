@@ -1,6 +1,8 @@
 #include <math.h>
 
 #include "vui/vui.h"
+#define SHL_STR_IMPLEMENTATION
+#include "shl/shl-str.h"
 
 #define DEFAULT_LAYOUT_OUTER_PADDING 10.0
 #define DEFAULT_LAYOUT_INNER_PADDING 10.0
@@ -23,9 +25,21 @@ bool vui_init(Vui *vui, VuiBackend *backend) {
   return true;
 }
 
+static void ct_reset_counters(VuiCounterTable *ct) {
+  for (u32 i = 0; i < VUI_COUNTER_TABLE_CAP; ++i) {
+    VuiCounter *counter = ct->items[i];
+    while (counter) {
+      counter->value = 0;
+      counter = counter->next;
+    }
+  }
+}
+
 void vui_begin_frame(Vui *vui) {
   for (u32 i = 0; i < vui->stack.len; ++i)
-    vui->stack.items[i].pos = 0;
+    vui->stack.items[i].len = 0;
+
+  ct_reset_counters(&vui->counter_table);
 
   vui->layouts.len = 0;
   VuiLayout layout = {
@@ -64,13 +78,13 @@ void vui_end_frame(Vui *vui) {
     f32 fixed_space = 0.0;
 
     for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
-      switch (item->states.items[j].constraint.kind) {
+      switch (item->items[j]->constraint.kind) {
       case VuiConstraintKindFill: {
         ++fills_count;
       } break;
 
       case VuiConstraintKindFixed: {
-        fixed_space += item->states.items[j].constraint.value;
+        fixed_space += item->items[j]->constraint.value;
       } break;
       }
     }
@@ -104,46 +118,46 @@ void vui_end_frame(Vui *vui) {
     f32 y = layout->y + layout->outer_padding;
 
     for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
-      item->states.items[j].x = x;
-      item->states.items[j].y = y;
+      item->items[j]->x = x;
+      item->items[j]->y = y;
 
-      switch (item->states.items[j].constraint.kind) {
+      switch (item->items[j]->constraint.kind) {
       case VuiConstraintKindFill: {
-        item->states.items[j].w = w;
-        item->states.items[j].h = h;
+        item->items[j]->w = w;
+        item->items[j]->h = h;
       } break;
 
       case VuiConstraintKindFixed: {
         switch (layout->kind) {
         case VuiLayoutKindVertical: {
-          item->states.items[j].w = w;
-          item->states.items[j].h = item->states.items[j].constraint.value;
+          item->items[j]->w = w;
+          item->items[j]->h = item->items[j]->constraint.value;
         } break;
 
         case VuiLayoutKindHorizontal: {
-          item->states.items[j].w = item->states.items[j].constraint.value;
-          item->states.items[j].h = h;
+          item->items[j]->w = item->items[j]->constraint.value;
+          item->items[j]->h = h;
         } break;
         }
       } break;
       }
 
-      if (item->states.items[j].layout_index != (u32) -1) {
+      if (item->items[j]->layout_index != (u32) -1) {
         VuiLayout *other_layout =
-          vui->layouts.items + item->states.items[j].layout_index;
-        other_layout->x = item->states.items[j].x;
-        other_layout->y = item->states.items[j].y;
-        other_layout->w = item->states.items[j].w;
-        other_layout->h = item->states.items[j].h;
+          vui->layouts.items + item->items[j]->layout_index;
+        other_layout->x = item->items[j]->x;
+        other_layout->y = item->items[j]->y;
+        other_layout->w = item->items[j]->w;
+        other_layout->h = item->items[j]->h;
       }
 
       switch (layout->kind) {
       case VuiLayoutKindVertical: {
-        y += item->states.items[j].h + layout->inner_padding;
+        y += item->items[j]->h + layout->inner_padding;
       } break;
 
       case VuiLayoutKindHorizontal: {
-        x += item->states.items[j].w + layout->inner_padding;
+        x += item->items[j]->w + layout->inner_padding;
       } break;
       }
     }
@@ -155,12 +169,37 @@ void vui_end_frame(Vui *vui) {
   vui->mouse_up_this_frame = false;
 }
 
+static void wt_destroy(VuiWidgetTable *wt) {
+  for (u32 i = 0; i < VUI_WIDGET_TABLE_CAP; ++i) {
+    VuiWidgetState *state = wt->items[i];
+    while (state) {
+      VuiWidgetState *next = state->next;
+      free(state);
+      state = next;
+    }
+  }
+}
+
+static void ct_destroy(VuiCounterTable *ct) {
+  for (u32 i = 0; i < VUI_COUNTER_TABLE_CAP; ++i) {
+    VuiCounter *counter = ct->items[i];
+    while (counter) {
+      VuiCounter *next = counter->next;
+      free(counter);
+      counter = next;
+    }
+  }
+}
+
 void vui_destroy(Vui *vui) {
   vui->backend->destroy(vui->backend->data);
 
+  wt_destroy(&vui->widget_table);
+  ct_destroy(&vui->counter_table);
+
   for (u32 i = 0; i < vui->stack.len; ++i)
-    if (vui->stack.items[i].states.items)
-      free(vui->stack.items[i].states.items);
+    if (vui->stack.items[i].items)
+      free(vui->stack.items[i].items);
   if (vui->stack.items)
     free(vui->stack.items);
 
@@ -168,14 +207,53 @@ void vui_destroy(Vui *vui) {
     free(vui->layouts.items);
 }
 
-static VuiWidgetState *push_widget(Vui *vui) {
+static u32 *ct_get(VuiCounterTable *ct, u64 id) {
+  VuiCounter **result = ct->items + id % VUI_COUNTER_TABLE_CAP;
+
+  while (*result) {
+    if ((*result)->key == id)
+      return &(*result)->value;
+
+    result = &(*result)->next;
+  }
+
+  *result = malloc(sizeof(**result));
+  (*result)->key = id;
+  (*result)->value = 0;
+  (*result)->next = NULL;
+
+  return &(*result)->value;
+}
+
+static VuiWidgetState *wt_get_inc(VuiWidgetTable *wt, u64 id, u32 counter) {
+  VuiWidgetState **result = wt->items + id % VUI_WIDGET_TABLE_CAP;
+
+  while (*result) {
+    if ((*result)->key.id == id && (*result)->key.counter == counter)
+      return *result;
+
+    result = &(*result)->next;
+  }
+
+  *result = malloc(sizeof(**result));
+  memset(*result, 0, sizeof(**result));
+  (*result)->key.id = id;
+  (*result)->key.counter = counter;
+
+  return *result;
+}
+
+static VuiWidgetState *push_widget(Vui *vui, u64 id) {
   VuiLayout *current = vui->layouts.items + vui->current_layout;
   VuiWidgetStackItem *item = vui->stack.items + current->depth;
 
-  if (item->pos++ >= item->states.len)
-    DA_APPEND(item->states, (VuiWidgetState) {0});
+  u32 *counter = ct_get(&vui->counter_table, id);
+  VuiWidgetState *result = wt_get_inc(&vui->widget_table, id, *counter);
+  ++*counter;
 
-  VuiWidgetState *result = item->states.items + current->pos + current->len++;
+  DA_APPEND(*item, result);
+
+  ++current->len;
 
   result->is_hovered =
     vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
@@ -220,8 +298,8 @@ static f32 fit_text(Vui *vui, const char *text, f32 w, f32 h) {
   return result;
 }
 
-bool vui_button(Vui *vui, const char *text) {
-  VuiWidgetState *state = push_widget(vui);
+bool vui_button_id(Vui *vui, u64 id, const char *text) {
+  VuiWidgetState *state = push_widget(vui, id);
 
   if (state->is_hovered) {
     if (vui->mouse_down_this_frame)
@@ -265,11 +343,11 @@ bool vui_button(Vui *vui, const char *text) {
   return state->is_released;
 }
 
-static void vui_layout_begin(Vui *vui,
+static void vui_layout_begin(Vui *vui, u64 id,
                              f32 outer_padding,
                              f32 inner_padding,
                              VuiLayoutKind kind) {
-  VuiWidgetState *state = push_widget(vui);
+  VuiWidgetState *state = push_widget(vui, id);
   VuiLayout *current = vui->layouts.items + vui->current_layout;
 
   VuiLayout new = {
@@ -282,19 +360,19 @@ static void vui_layout_begin(Vui *vui,
   if (new.depth >= vui->stack.len)
     DA_APPEND(vui->stack, (VuiWidgetStackItem) {0});
   else
-    new.pos = vui->stack.items[vui->stack.len - 1].pos;
+    new.pos = vui->stack.items[vui->stack.len - 1].len;
 
   vui->current_layout = vui->layouts.len;
   state->layout_index = vui->current_layout;
   DA_APPEND(vui->layouts, new);
 }
 
-void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding) {
-  vui_layout_begin(vui, outer_padding, inner_padding, VuiLayoutKindVertical);
+void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindVertical);
 }
 
-void vui_layout_begin_horz(Vui *vui, f32 outer_padding, f32 inner_padding) {
-  vui_layout_begin(vui, outer_padding, inner_padding, VuiLayoutKindHorizontal);
+void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindHorizontal);
 }
 
 void vui_layout_end(Vui *vui) {
@@ -304,14 +382,14 @@ void vui_layout_end(Vui *vui) {
     --vui->current_layout;
 }
 
-void vui_label(Vui *vui, const char *text) {
-  vui_label_ex(vui, text, DEFAULT_LABEL_PADDING,
-               VuiHAlignLeft, VuiVAlignCenter);
+void vui_label_id(Vui *vui, u64 id, const char *text) {
+  vui_label_ex_id(vui, id, text, DEFAULT_LABEL_PADDING,
+                  VuiHAlignLeft, VuiVAlignCenter);
 }
 
-void vui_label_ex(Vui *vui, const char *text, f32 padding,
+void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
                   VuiHAlign h_align, VuiVAlign v_align) {
-  VuiWidgetState *state = push_widget(vui);
+  VuiWidgetState *state = push_widget(vui, id);
 
   f32 font_scale = fit_text(vui, text,
                             state->w - padding * 2.0,

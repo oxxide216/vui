@@ -2,6 +2,28 @@
 #define VUI_H
 
 #include "shl/shl-defs.h"
+#include "shl/shl-str.h"
+
+#ifndef VUI_WIDGET_TABLE_CAP
+#define VUI_WIDGET_TABLE_CAP 256
+#endif
+
+#ifndef VUI_COUNTER_TABLE_CAP
+#define VUI_COUNTER_TABLE_CAP 256
+#endif
+
+#define VUI_ID() (str_hash(STR_LIT(__FILE__)) + __LINE__)
+
+#define vui_button(vui, text)        \
+  vui_button_id(vui, VUI_ID(), text)
+#define vui_layout_begin_vert(vui, outer_padding, inner_padding)        \
+  vui_layout_begin_vert_id(vui, VUI_ID(), outer_padding, inner_padding)
+#define vui_layout_begin_horz(vui, outer_padding, inner_padding)        \
+  vui_layout_begin_horz_id(vui, VUI_ID(), outer_padding, inner_padding)
+#define vui_label(vui, text)        \
+  vui_label_id(vui, VUI_ID(), text)
+#define vui_label_ex(vui, text, padding, h_align, v_align)        \
+  vui_label_ex_id(vui, VUI_ID(), text, padding, h_align, v_align)
 
 typedef struct VuiBackendData VuiBackendData;
 
@@ -44,20 +66,39 @@ typedef struct {
   f32               value;
 } VuiConstraint;
 
-typedef struct {
-  f32           x, y, w, h;
-  bool          is_hovered;
-  bool          is_pressed;
-  bool          is_released;
-  u32           layout_index;
-  VuiConstraint constraint;
-} VuiWidgetState;
+typedef struct VuiWidgetState VuiWidgetState;
+
+struct VuiWidgetState {
+  struct {
+    u64 id;
+    u32 counter;
+  } key;
+  f32             x, y, w, h;
+  bool            is_hovered;
+  bool            is_pressed;
+  bool            is_released;
+  u32             layout_index;
+  VuiConstraint   constraint;
+  VuiWidgetState *next;
+};
 
 typedef struct {
-  Da(VuiWidgetState) states;
-  u32                pos;
-} VuiWidgetStackItem;
+  VuiWidgetState *items[VUI_WIDGET_TABLE_CAP];
+} VuiWidgetTable;
 
+typedef struct VuiCounter VuiCounter;
+
+struct VuiCounter {
+  u64           key;
+  u32           value;
+  VuiCounter   *next;
+};
+
+typedef struct {
+  VuiCounter *items[VUI_COUNTER_TABLE_CAP];
+} VuiCounterTable;
+
+typedef Da(VuiWidgetState *) VuiWidgetStackItem;
 typedef Da(VuiWidgetStackItem) VuiWidgetStack;
 
 typedef enum {
@@ -78,16 +119,18 @@ typedef struct {
 typedef Da(VuiLayout) VuiLayouts;
 
 typedef struct {
-  VuiBackend     *backend;
-  VuiWidgetStack  stack;
-  VuiLayouts      layouts;
-  u32             current_layout;
-  VuiConstraint   constraint;
-  f32             bg_r, bg_g, bg_b, bg_a;
-  f32             mouse_x;
-  f32             mouse_y;
-  bool            mouse_down_this_frame;
-  bool            mouse_up_this_frame;
+  VuiBackend      *backend;
+  VuiWidgetTable   widget_table;
+  VuiCounterTable  counter_table;
+  VuiWidgetStack   stack;
+  VuiLayouts       layouts;
+  u32              current_layout;
+  VuiConstraint    constraint;
+  f32              bg_r, bg_g, bg_b, bg_a;
+  f32              mouse_x;
+  f32              mouse_y;
+  bool             mouse_down_this_frame;
+  bool             mouse_up_this_frame;
 } Vui;
 
 typedef enum {
@@ -108,13 +151,13 @@ void vui_end_frame(Vui *vui);
 void vui_destroy(Vui *vui);
 
 // Widgets
-bool vui_button(Vui *vui, const char *text);
-void vui_layout_begin_vert(Vui *vui, f32 outer_padding, f32 inner_padding);
-void vui_layout_begin_horz(Vui *vui, f32 outer_padding, f32 inner_padding);
+bool vui_button_id(Vui *vui, u64 id, const char *text);
+void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
+void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
 void vui_layout_end(Vui *vui);
-void vui_label(Vui *vui, const char *text);
-void vui_label_ex(Vui *vui, const char *text, f32 padding,
-                  VuiHAlign h_align, VuiVAlign v_align);
+void vui_label_id(Vui *vui, u64 id, const char *text);
+void vui_label_ex_id(Vui *vui, u64 id, const char *text, f32 padding,
+                     VuiHAlign h_align, VuiVAlign v_align);
 
 // Constraints for the following element
 void vui_cons_fill(Vui *vui); // Default
