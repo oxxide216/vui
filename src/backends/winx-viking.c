@@ -607,6 +607,12 @@ bool vui_winx_vulkan_process_event(Vui *vui, WinxEvent *event) {
     if (event->as.button.button == WinxMouseButtonLeft) {
       vui_on_mouse_down(vui);
       return true;
+    } else if (event->as.button.button == WinxMouseButtonWheelUp) {
+      vui_on_mouse_scroll(vui, 0.0, 1.0);
+      return true;
+    } else if (event->as.button.button == WinxMouseButtonWheelDown) {
+      vui_on_mouse_scroll(vui, 0.0, -1.0);
+      return true;
     }
   } break;
 

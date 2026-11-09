@@ -10,6 +10,7 @@
 #define BUTTON_PADDING_PERC          0.1
 #define BORDER_RADIUS                15.0
 #define MAX_FONT_SCALE               96.0
+#define SCROLL_SPEED                 8.0
 
 #define BG_COLOR              0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
 #define FG_COLOR              0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
@@ -45,14 +46,19 @@ void vui_begin_frame(Vui *vui) {
   vui->layouts.len = 0;
   VuiLayout layout = {
     VuiLayoutKindVertical,
+    (u32) -1, (u32) -1,
     0, 0, 0,
     DEFAULT_LAYOUT_OUTER_PADDING,
     DEFAULT_LAYOUT_INNER_PADDING,
-    0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
   };
   vui->backend->get_window_size(vui->backend->data, &layout.w, &layout.h);
   DA_APPEND(vui->layouts, layout);
   vui->current_layout = 0;
+  vui->clip_tl_x = layout.x;
+  vui->clip_tl_y = layout.y;
+  vui->clip_br_x = layout.x + layout.w;
+  vui->clip_br_y = layout.y + layout.h;
 
   vui->backend->begin_frame(vui->backend->data);
   vui->backend->draw_rect(vui->backend->data,
@@ -115,8 +121,8 @@ void vui_end_frame(Vui *vui) {
     } break;
     }
 
-    f32 x = layout->x + layout->outer_padding;
-    f32 y = layout->y + layout->outer_padding;
+    f32 x = layout->x + layout->outer_padding - layout->scroll_x;
+    f32 y = layout->y + layout->outer_padding - layout->scroll_y;
 
     for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
       item->items[j]->x = x;
@@ -162,10 +168,28 @@ void vui_end_frame(Vui *vui) {
       } break;
       }
     }
+
+    if (layout->root_depth != (u32) -1) {
+      if (layout->scroll_x != 0.0) {
+        while (x + layout->outer_padding - layout->x < layout->w) {
+          vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_x -= 1.0;
+          x += 1.0;
+        }
+      }
+
+      if (layout->scroll_y != 0.0) {
+        while (y + layout->outer_padding - layout->y < layout->h) {
+          vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_y -= 1.0;
+          y += 1.0;
+        }
+      }
+    }
   }
 
   vui_bg_color(vui, BG_COLOR);
 
+  vui->mouse_scroll_x = 0.0;
+  vui->mouse_scroll_y = 0.0;
   vui->mouse_down_this_frame = false;
   vui->mouse_up_this_frame = false;
 }
@@ -201,11 +225,9 @@ void vui_destroy(Vui *vui) {
   for (u32 i = 0; i < vui->stack.len; ++i)
     if (vui->stack.items[i].items)
       free(vui->stack.items[i].items);
-  if (vui->stack.items)
-    free(vui->stack.items);
+  free(vui->stack.items);
 
-  if (vui->layouts.items)
-    free(vui->layouts.items);
+  free(vui->layouts.items);
 }
 
 static u32 *ct_get(VuiCounterTable *ct, u64 id) {
@@ -256,21 +278,29 @@ static VuiWidgetState *push_widget(Vui *vui, u64 id) {
 
   ++current->len;
 
-  result->is_hovered =
-    vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
-    vui->mouse_y >= result->y && vui->mouse_y <= result->y + result->h;
-  result->is_released = false;
+  result->is_visible =
+    result->x >= vui->clip_tl_x && result->x + result->w <= vui->clip_br_x &&
+    result->y >= vui->clip_tl_y && result->y + result->h <= vui->clip_br_y;
   result->layout_index = (u32) -1;
   result->constraint = vui->constraint;
 
   vui_cons_fill(vui);
 
-  vui->backend->draw_rounded_rect(vui->backend->data,
-                                  BORDER_RADIUS,
-                                  result->x, result->y,
-                                  result->w, result->h,
-                                  vui->bg_r, vui->bg_g,
-                                  vui->bg_b, vui->bg_a);
+  if (!result->is_visible)
+    return result;
+
+  result->is_hovered =
+    vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
+    vui->mouse_y >= result->y && vui->mouse_y <= result->y + result->h;
+  result->is_released = false;
+
+  if (vui->bg_a > 0.0)
+    vui->backend->draw_rounded_rect(vui->backend->data,
+                                    BORDER_RADIUS,
+                                    result->x, result->y,
+                                    result->w, result->h,
+                                    vui->bg_r, vui->bg_g,
+                                    vui->bg_b, vui->bg_a);
 
   vui_bg_color(vui, 0.0, 0.0, 0.0, 0.0);
 
@@ -311,6 +341,8 @@ bool vui_button_id(Vui *vui, u64 id, const char *text,
 bool vui_button_w_id(Vui *vui, u64 id, const u32 *text,
                      u32 text_len, bool is_enabled) {
   VuiWidgetState *state = push_widget(vui, id);
+  if (!state->is_visible)
+    return false;
 
   if (is_enabled) {
     if (state->is_hovered) {
@@ -365,15 +397,20 @@ bool vui_button_w_id(Vui *vui, u64 id, const u32 *text,
 static void vui_layout_begin(Vui *vui, u64 id,
                              f32 outer_padding,
                              f32 inner_padding,
-                             VuiLayoutKind kind) {
+                             VuiLayoutKind kind,
+                             bool scroll_x,
+                             bool scroll_y) {
   VuiWidgetState *state = push_widget(vui, id);
   VuiLayout *current = vui->layouts.items + vui->current_layout;
 
   VuiLayout new = {
     kind,
+    current->depth,
+    current->pos + current->len - 1,
     current->depth + 1, 0, 0,
     outer_padding, inner_padding,
     state->x, state->y, state->w, state->h,
+    state->scroll_x, state->scroll_y,
   };
 
   if (new.depth >= vui->stack.len)
@@ -384,14 +421,34 @@ static void vui_layout_begin(Vui *vui, u64 id,
   vui->current_layout = vui->layouts.len;
   state->layout_index = vui->current_layout;
   DA_APPEND(vui->layouts, new);
+
+  if (!state->is_visible)
+    return;
+
+  if (scroll_x && state->is_hovered) {
+    state->scroll_x += vui->mouse_scroll_x * SCROLL_SPEED;
+    if (state->scroll_x < 0.0)
+      state->scroll_x = 0.0;
+  }
+
+  if (scroll_y && state->is_hovered) {
+    state->scroll_y += vui->mouse_scroll_y * SCROLL_SPEED;
+    if (state->scroll_y < 0.0)
+      state->scroll_y = 0.0;
+  }
+
+  vui->clip_tl_x = new.x;
+  vui->clip_tl_y = new.y;
+  vui->clip_br_x = new.x + new.w;
+  vui->clip_br_y = new.y + new.h;
 }
 
 void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
-  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindVertical);
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindVertical, false, false);
 }
 
 void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
-  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindHorizontal);
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindHorizontal, false, false);
 }
 
 void vui_layout_end(Vui *vui) {
@@ -399,6 +456,13 @@ void vui_layout_end(Vui *vui) {
   while (vui->current_layout > 0 &&
          vui->layouts.items[vui->current_layout].depth >= depth)
     --vui->current_layout;
+
+  VuiLayout *current = vui->layouts.items + vui->current_layout;
+
+  vui->clip_tl_x = current->x;
+  vui->clip_tl_y = current->y;
+  vui->clip_br_x = current->x + current->w;
+  vui->clip_br_y = current->y + current->h;
 }
 
 void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len) {
@@ -425,6 +489,8 @@ void vui_label_ex_id(Vui *vui, u64 id, const char *text, u32 text_len,
 void vui_label_ex_w_id(Vui *vui, u64 id, const u32 *text, u32 text_len,
                        f32 padding, VuiHAlign h_align, VuiVAlign v_align) {
   VuiWidgetState *state = push_widget(vui, id);
+  if (!state->is_visible)
+    return;
 
   f32 font_scale = fit_text(vui, text, text_len,
                             state->w - padding * 2.0,
@@ -464,6 +530,18 @@ void vui_label_ex_w_id(Vui *vui, u64 id, const u32 *text, u32 text_len,
   vui->backend->draw_text(vui->backend->data, text, text_len, font_scale, x, y, FG_COLOR);
 }
 
+void vui_scroll_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindVertical, false, true);
+}
+
+void vui_scroll_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
+  vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindHorizontal, true, false);
+}
+
+void vui_scroll_end(Vui *vui) {
+  vui_layout_end(vui);
+}
+
 void vui_cons_fill(Vui *vui) {
   vui->constraint = (VuiConstraint) { VuiConstraintKindFill, 0.0 };
 }
@@ -490,4 +568,9 @@ void vui_on_mouse_down(Vui *vui) {
 
 void vui_on_mouse_up(Vui *vui) {
   vui->mouse_up_this_frame = true;
+}
+
+void vui_on_mouse_scroll(Vui *vui, f32 x, f32 y) {
+  vui->mouse_scroll_x = x;
+  vui->mouse_scroll_y = y;
 }

@@ -36,6 +36,10 @@
   vui_label_ex_id(vui, VUI_ID(), text, text_len, padding, h_align, v_align)
 #define vui_label_ex_ws(vui, text, text_len, padding, h_align, v_align)       \
   vui_label_ex_w_id(vui, VUI_ID(), text, text_len, padding, h_align, v_align)
+#define vui_scroll_begin_vert(vui, outer_padding, inner_padding)        \
+  vui_scroll_begin_vert_id(vui, VUI_ID(), outer_padding, inner_padding)
+#define vui_scroll_begin_horz(vui, outer_padding, inner_padding)        \
+  vui_scroll_begin_horz_id(vui, VUI_ID(), outer_padding, inner_padding)
 
 typedef struct VuiBackendData VuiBackendData;
 
@@ -87,6 +91,9 @@ struct VuiWidgetState {
     u32 counter;
   } key;
   f32             x, y, w, h;
+  f32             scroll_x;
+  f32             scroll_y;
+  bool            is_visible;
   bool            is_hovered;
   bool            is_pressed;
   bool            is_released;
@@ -121,12 +128,16 @@ typedef enum {
 
 typedef struct {
   VuiLayoutKind kind;
+  u32           root_depth;
+  u32           root_pos;
   u32           depth;
   u32           pos;
   u32           len;
   f32           outer_padding;
   f32           inner_padding;
   f32           x, y, w, h;
+  f32           scroll_x;
+  f32           scroll_y;
 } VuiLayout;
 
 typedef Da(VuiLayout) VuiLayouts;
@@ -140,8 +151,12 @@ typedef struct {
   u32              current_layout;
   VuiConstraint    constraint;
   f32              bg_r, bg_g, bg_b, bg_a;
+  f32              clip_tl_x, clip_tl_y;
+  f32              clip_br_x, clip_br_y;
   f32              mouse_x;
   f32              mouse_y;
+  f32              mouse_scroll_x;
+  f32              mouse_scroll_y;
   bool             mouse_down_this_frame;
   bool             mouse_up_this_frame;
 } Vui;
@@ -175,6 +190,9 @@ void vui_label_ex_id(Vui *vui, u64 id, const char *text, u32 text_len,
                      f32 padding, VuiHAlign h_align, VuiVAlign v_align);
 void vui_label_ex_w_id(Vui *vui, u64 id, const u32 *text, u32 text_len,
                        f32 padding, VuiHAlign h_align, VuiVAlign v_align);
+void vui_scroll_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
+void vui_scroll_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding);
+void vui_scroll_end(Vui *vui);
 
 // Constraints for the following element
 void vui_cons_fill(Vui *vui); // Default
@@ -186,5 +204,6 @@ void vui_bg_color(Vui *vui, f32 r, f32 g, f32 b, f32 a);
 void vui_on_mouse_move(Vui *vui, f32 x, f32 y);
 void vui_on_mouse_down(Vui *vui);
 void vui_on_mouse_up(Vui *vui);
+void vui_on_mouse_scroll(Vui *vui, f32 x, f32 y);
 
 #endif // VUI_H

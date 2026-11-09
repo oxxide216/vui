@@ -11,8 +11,16 @@ deps = viking winx
 cflags = $cflags
 incpath = $build_dir
 
-[vui-example]
+[vui-example-basic]
 src = examples/basic.c src/backends/winx-viking.c
+deps = vui viking winx
+ghost_deps = $build_dir/assets-winx-viking.c
+cflags = $cflags
+ldflags = $ldflags
+incpath = $build_dir
+
+[vui-example-scroll]
+src = examples/scroll.c src/backends/winx-viking.c
 deps = vui viking winx
 ghost_deps = $build_dir/assets-winx-viking.c
 cflags = $cflags
