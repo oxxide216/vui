@@ -58,8 +58,6 @@ i32 main(void) {
             puts(buffer);
         }
       vui_scroll_end(&vui);
-      vui_scroll_begin_vert(&vui, 0.0, 1.0);
-      vui_scroll_end(&vui);
     vui_end_frame(&vui);
 
     vik_end_frame(executor);
