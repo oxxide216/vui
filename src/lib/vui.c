@@ -61,6 +61,9 @@ void vui_begin_frame(Vui *vui) {
   vui->clip_br_y = layout.y + layout.h;
 
   vui->backend->begin_frame(vui->backend->data);
+  vui->backend->set_clip(vui->backend->data,
+                         vui->clip_tl_x, vui->clip_tl_y,
+                         vui->clip_br_x, vui->clip_br_y);
   vui->backend->draw_rect(vui->backend->data,
                           layout.x, layout.y,
                           layout.w, layout.h,
@@ -279,8 +282,8 @@ static VuiWidgetState *push_widget(Vui *vui, u64 id) {
   ++current->len;
 
   result->is_visible =
-    result->x >= vui->clip_tl_x && result->x + result->w <= vui->clip_br_x &&
-    result->y >= vui->clip_tl_y && result->y + result->h <= vui->clip_br_y;
+    result->x < vui->clip_br_x && result->x + result->w > vui->clip_tl_x &&
+    result->y < vui->clip_br_y && result->y + result->h > vui->clip_tl_y;
   result->layout_index = (u32) -1;
   result->constraint = vui->constraint;
 
@@ -441,6 +444,10 @@ static void vui_layout_begin(Vui *vui, u64 id,
   vui->clip_tl_y = new.y;
   vui->clip_br_x = new.x + new.w;
   vui->clip_br_y = new.y + new.h;
+
+  vui->backend->set_clip(vui->backend->data,
+                         vui->clip_tl_x, vui->clip_tl_y,
+                         vui->clip_br_x, vui->clip_br_y);
 }
 
 void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
@@ -463,6 +470,10 @@ void vui_layout_end(Vui *vui) {
   vui->clip_tl_y = current->y;
   vui->clip_br_x = current->x + current->w;
   vui->clip_br_y = current->y + current->h;
+
+  vui->backend->set_clip(vui->backend->data,
+                         vui->clip_tl_x, vui->clip_tl_y,
+                         vui->clip_br_x, vui->clip_br_y);
 }
 
 void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len) {

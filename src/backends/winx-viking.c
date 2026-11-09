@@ -128,6 +128,15 @@ static void get_window_size(VuiBackendData *data, f32 *w, f32 *h) {
   *h = data->window->height;
 }
 
+static void begin_frame(VuiBackendData *data);
+static void end_frame(VuiBackendData *data);
+
+static void set_clip(VuiBackendData *data, f32 x0, f32 y0, f32 x1, f32 y1) {
+  end_frame(data);
+  vik_set_scissor(data->executor, x0, y0, x1, y1);
+  begin_frame(data);
+}
+
 static void begin_frame(VuiBackendData *data) {
   data->shape_vertices.len = 0;
   data->shape_indices.len = 0;
@@ -586,6 +595,7 @@ bool vui_winx_vulkan_backend_init(VuiBackend *backend,
                                            ARRAY_LEN(text_indices));
 
   backend->get_window_size = get_window_size;
+  backend->set_clip = set_clip;
   backend->begin_frame = begin_frame;
   backend->draw_rect = draw_rect;
   backend->draw_rounded_rect = draw_rounded_rect;

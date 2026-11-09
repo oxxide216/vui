@@ -44,6 +44,7 @@
 typedef struct VuiBackendData VuiBackendData;
 
 typedef void (*VuiBackendGetWindowSizeFunc)(VuiBackendData *data, f32 *w, f32 *h);
+typedef void (*VuiBackendSetClipFunc)(VuiBackendData *data, f32 x0, f32 y0, f32 x1, f32 y1);
 typedef void (*VuiBackendBeginFrameFunc)(VuiBackendData *data);
 typedef void (*VuiBackendDrawRectFunc)(VuiBackendData *data,
                                        f32 x, f32 y, f32 w, f32 h,
@@ -64,6 +65,7 @@ typedef void (*VuiBackendDestroyFunc)(VuiBackendData *data);
 typedef struct {
   VuiBackendData                *data;
   VuiBackendGetWindowSizeFunc    get_window_size;
+  VuiBackendSetClipFunc          set_clip;
   VuiBackendBeginFrameFunc       begin_frame;
   VuiBackendDrawRectFunc         draw_rect;
   VuiBackendDrawRoundedRectFunc  draw_rounded_rect;
