@@ -61,9 +61,6 @@ void vui_begin_frame(Vui *vui) {
   vui->clip_br_y = layout.y + layout.h;
 
   vui->backend->begin_frame(vui->backend->data);
-  vui->backend->set_clip(vui->backend->data,
-                         vui->clip_tl_x, vui->clip_tl_y,
-                         vui->clip_br_x, vui->clip_br_y);
   vui->backend->draw_rect(vui->backend->data,
                           layout.x, layout.y,
                           layout.w, layout.h,
@@ -458,9 +455,10 @@ static void vui_layout_begin(Vui *vui, u64 id,
   vui->clip_br_x = new.x + new.w;
   vui->clip_br_y = new.y + new.h;
 
-  vui->backend->set_clip(vui->backend->data,
-                         vui->clip_tl_x, vui->clip_tl_y,
-                         vui->clip_br_x, vui->clip_br_y);
+  if (scroll_x || scroll_y)
+    vui->backend->set_clip(vui->backend->data,
+                           vui->clip_tl_x, vui->clip_tl_y,
+                           vui->clip_br_x, vui->clip_br_y);
 }
 
 void vui_layout_begin_vert_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_padding) {
@@ -471,7 +469,7 @@ void vui_layout_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_pad
   vui_layout_begin(vui, id, outer_padding, inner_padding, VuiLayoutKindHorizontal, false, false);
 }
 
-void vui_layout_end(Vui *vui) {
+static void layout_end(Vui *vui, bool scroll) {
   u32 depth = vui->layouts.items[vui->current_layout].depth;
   while (vui->current_layout > 0 &&
          vui->layouts.items[vui->current_layout].depth >= depth)
@@ -484,9 +482,14 @@ void vui_layout_end(Vui *vui) {
   vui->clip_br_x = current->x + current->w;
   vui->clip_br_y = current->y + current->h;
 
-  vui->backend->set_clip(vui->backend->data,
-                         vui->clip_tl_x, vui->clip_tl_y,
-                         vui->clip_br_x, vui->clip_br_y);
+  if (scroll)
+    vui->backend->set_clip(vui->backend->data,
+                           vui->clip_tl_x, vui->clip_tl_y,
+                           vui->clip_br_x, vui->clip_br_y);
+}
+
+void vui_layout_end(Vui *vui) {
+  layout_end(vui, false);
 }
 
 void vui_label_id(Vui *vui, u64 id, const char *text, u32 text_len) {
@@ -563,7 +566,7 @@ void vui_scroll_begin_horz_id(Vui *vui, u64 id, f32 outer_padding, f32 inner_pad
 }
 
 void vui_scroll_end(Vui *vui) {
-  vui_layout_end(vui);
+  layout_end(vui, true);
 }
 
 void vui_cons_fill(Vui *vui) {
