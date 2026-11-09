@@ -10,7 +10,7 @@
 #define BUTTON_PADDING_PERC          0.1
 #define BORDER_RADIUS                15.0
 #define MAX_FONT_SCALE               96.0
-#define SCROLL_SPEED                 8.0
+#define SCROLL_SPEED                 10.0
 
 #define BG_COLOR              0x18/255.0, 0x18/255.0, 0x18/255.0, 0xff/255.0
 #define FG_COLOR              0x86/255.0, 0x8a/255.0, 0xac/255.0, 0xff/255.0
@@ -124,69 +124,79 @@ void vui_end_frame(Vui *vui) {
     } break;
     }
 
-    f32 x = layout->x + layout->outer_padding - layout->scroll_x;
-    f32 y = layout->y + layout->outer_padding - layout->scroll_y;
+    bool redo;
 
-    for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
-      item->items[j]->x = x;
-      item->items[j]->y = y;
+    do {
+      redo = false;
 
-      switch (item->items[j]->constraint.kind) {
-      case VuiConstraintKindFill: {
-        item->items[j]->w = w;
-        item->items[j]->h = h;
-      } break;
+      f32 x = layout->x + layout->outer_padding - layout->scroll_x;
+      f32 y = layout->y + layout->outer_padding - layout->scroll_y;
 
-      case VuiConstraintKindFixed: {
+      for (u32 j = layout->pos; j < layout->pos + layout->len; ++j) {
+        item->items[j]->x = x;
+        item->items[j]->y = y;
+
+        switch (item->items[j]->constraint.kind) {
+        case VuiConstraintKindFill: {
+          item->items[j]->w = w;
+          item->items[j]->h = h;
+        } break;
+
+        case VuiConstraintKindFixed: {
+          switch (layout->kind) {
+          case VuiLayoutKindVertical: {
+            item->items[j]->w = w;
+            item->items[j]->h = item->items[j]->constraint.value;
+          } break;
+
+          case VuiLayoutKindHorizontal: {
+            item->items[j]->w = item->items[j]->constraint.value;
+            item->items[j]->h = h;
+          } break;
+          }
+        } break;
+        }
+
+        if (item->items[j]->layout_index != (u32) -1) {
+          VuiLayout *other_layout =
+            vui->layouts.items + item->items[j]->layout_index;
+          other_layout->x = item->items[j]->x;
+          other_layout->y = item->items[j]->y;
+          other_layout->w = item->items[j]->w;
+          other_layout->h = item->items[j]->h;
+        }
+
         switch (layout->kind) {
         case VuiLayoutKindVertical: {
-          item->items[j]->w = w;
-          item->items[j]->h = item->items[j]->constraint.value;
+          y += item->items[j]->h + layout->inner_padding;
         } break;
 
         case VuiLayoutKindHorizontal: {
-          item->items[j]->w = item->items[j]->constraint.value;
-          item->items[j]->h = h;
+          x += item->items[j]->w + layout->inner_padding;
         } break;
         }
-      } break;
       }
 
-      if (item->items[j]->layout_index != (u32) -1) {
-        VuiLayout *other_layout =
-          vui->layouts.items + item->items[j]->layout_index;
-        other_layout->x = item->items[j]->x;
-        other_layout->y = item->items[j]->y;
-        other_layout->w = item->items[j]->w;
-        other_layout->h = item->items[j]->h;
-      }
+      if (layout->root_depth != (u32) -1) {
+        if (layout->scroll_x != 0.0) {
+          while (x + layout->outer_padding - layout->x < layout->w) {
+            vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_x -= 1.0;
+            layout->scroll_x -= 1.0;
+            x += 1.0;
+            redo = true;
+          }
+        }
 
-      switch (layout->kind) {
-      case VuiLayoutKindVertical: {
-        y += item->items[j]->h + layout->inner_padding;
-      } break;
-
-      case VuiLayoutKindHorizontal: {
-        x += item->items[j]->w + layout->inner_padding;
-      } break;
-      }
-    }
-
-    if (layout->root_depth != (u32) -1) {
-      if (layout->scroll_x != 0.0) {
-        while (x + layout->outer_padding - layout->x < layout->w) {
-          vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_x -= 1.0;
-          x += 1.0;
+        if (layout->scroll_y != 0.0) {
+          while (y + layout->outer_padding - layout->y < layout->h) {
+            vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_y -= 1.0;
+            layout->scroll_y -= 1.0;
+            y += 1.0;
+            redo = true;
+          }
         }
       }
-
-      if (layout->scroll_y != 0.0) {
-        while (y + layout->outer_padding - layout->y < layout->h) {
-          vui->stack.items[layout->root_depth].items[layout->root_pos]->scroll_y -= 1.0;
-          y += 1.0;
-        }
-      }
-    }
+    } while (redo);
   }
 
   vui_bg_color(vui, BG_COLOR);
