@@ -295,6 +295,9 @@ static VuiWidgetState *push_widget(Vui *vui, u64 id) {
   result->is_hovered =
     vui->mouse_x >= result->x && vui->mouse_x <= result->x + result->w &&
     vui->mouse_y >= result->y && vui->mouse_y <= result->y + result->h;
+  if (current->root_depth != (u32) -1)
+    result->is_hovered &=
+      vui->stack.items[current->root_depth].items[current->root_pos]->is_hovered;
   result->is_released = false;
 
   if (vui->bg_a > 0.0)
